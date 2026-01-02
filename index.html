@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>متجر ماسكي - منتجات رقمية</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -26,6 +28,30 @@
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             color: var(--dark);
             min-height: 100vh;
+        }
+        
+        /* زر الوصول السريع للوحة التحكم */
+        .admin-access-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 9999;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        
+        .admin-access-btn:hover {
+            transform: scale(1.05);
         }
         
         /* الشريط العلوي */
@@ -56,16 +82,6 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
             font-family: 'Arial', sans-serif;
             letter-spacing: 1px;
-        }
-        
-        .logo::after {
-            content: "ماسكي";
-            position: absolute;
-            background: linear-gradient(to right, #ff6b6b, #ffd700);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            z-index: -1;
-            transform: translate(3px, 3px);
         }
         
         /* قائمة التنقل */
@@ -247,6 +263,9 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             font-size: 1.2rem;
             z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         /* نافذة تسجيل الدخول */
@@ -379,6 +398,33 @@
             color: white;
         }
         
+        /* نافذة الدفع */
+        .payment-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .payment-modal.active {
+            display: flex;
+        }
+        
+        .payment-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+        
         /* الفوتر */
         .footer {
             background: var(--dark);
@@ -396,6 +442,21 @@
             flex-wrap: wrap;
         }
         
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         @media (max-width: 768px) {
             .header-content {
                 flex-direction: column;
@@ -410,10 +471,22 @@
             .products-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .admin-access-btn {
+                top: 10px;
+                left: 10px;
+                padding: 8px 15px;
+                font-size: 12px;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- زر الوصول السريع للوحة التحكم -->
+    <button class="admin-access-btn" onclick="showLogin()">
+        <i class="fas fa-cogs"></i> لوحة التحكم
+    </button>
+
     <!-- الشريط العلوي -->
     <header class="header">
         <div class="header-content">
@@ -429,7 +502,7 @@
     <!-- البنر الإعلاني -->
     <div class="banner-container">
         <div class="ad-banner" id="adBanner">
-            مساحة للإعلانات - أدخل كود الإعلان من لوحة التحكم
+            <div class="loader"></div>
         </div>
     </div>
 
@@ -513,13 +586,23 @@
                 <h3 class="admin-title">معلومات التواصل</h3>
                 <div class="form-group">
                     <label class="form-label">البريد الإلكتروني</label>
-                    <input type="email" class="form-control" id="adminEmail" value="maski@example.com">
+                    <input type="email" class="form-control" id="adminEmail">
                 </div>
                 <div class="form-group">
                     <label class="form-label">رقم الهاتف</label>
-                    <input type="tel" class="form-control" id="adminPhone" value="+966500000000">
+                    <input type="tel" class="form-control" id="adminPhone">
                 </div>
                 <button class="btn btn-primary" onclick="updateContact()">تحديث معلومات التواصل</button>
+            </div>
+            
+            <div class="admin-section">
+                <h3 class="admin-title">إعدادات الدفع</h3>
+                <div class="form-group">
+                    <label class="form-label">NowPayments API Key</label>
+                    <input type="text" class="form-control" id="nowpaymentsKey" placeholder="أدخل API Key">
+                    <small>احصل عليه من حسابك في nowpayments.io</small>
+                </div>
+                <button class="btn btn-primary" onclick="savePaymentSettings()">حفظ إعدادات الدفع</button>
             </div>
             
             <div class="admin-section">
@@ -543,6 +626,17 @@
         </div>
     </div>
 
+    <!-- نافذة الدفع -->
+    <div class="payment-modal" id="paymentModal">
+        <div class="payment-box">
+            <h2 class="admin-title" id="paymentTitle">إتمام عملية الشراء</h2>
+            <div id="paymentContent">
+                <!-- محتوى الدفع سيظهر هنا -->
+            </div>
+            <button class="btn btn-danger" onclick="closePaymentModal()" style="margin-top: 20px;">إلغاء</button>
+        </div>
+    </div>
+
     <!-- زر الدخول للإدارة -->
     <button class="admin-btn" onclick="showLogin()">
         <i class="fas fa-lock"></i>
@@ -558,82 +652,248 @@
     </footer>
 
     <script>
-        // بيانات أولية
-        let products = {
-            freefire: [
-                { id: 1, name: "حساب فري فاير مستوى 70", description: "حساب برتبة هيرو مع 20 سكن نادر", price: 50, link: "" },
-                { id: 2, name: "حساب فري فاير ملكي", description: "حساب مع 5 شخصيات أسطورية", price: 120, link: "" }
-            ],
-            shipping: [
-                { id: 3, name: "شحن سريع داخل المدينة", description: "توصيل خلال 24 ساعة", price: 10, link: "" }
-            ],
-            social: [
-                { id: 4, name: "1000 متابع حقيقي", description: "متابعين حقيقيين لإنستغرام", price: 15, link: "" },
-                { id: 5, name: "5000 متابع عربي", description: "متابعين عرب لتيك توك", price: 40, link: "" }
-            ]
-        };
-
+        // ===================== Supabase Configuration =====================
+        const SUPABASE_URL = 'https://pzmwdrqgcwwugacezjev.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_JfD0ktwYbNcXU6tXSZvV4w_o_5xjsIv';
+        
+        // إنشاء عميل Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // بيانات التطبيق
+        let products = { freefire: [], shipping: [], social: [] };
         let adminPassword = "Maski2026";
-        let contactInfo = {
-            email: "maski@example.com",
-            phone: "+966500000000"
-        };
-
-        // تهيئة الصفحة
-        document.addEventListener('DOMContentLoaded', function() {
-            // تحديث معلومات التواصل
+        let contactInfo = { email: "", phone: "" };
+        let nowpaymentsApiKey = "";
+        
+        // ===================== تهيئة التطبيق =====================
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('جاري تحميل متجر ماسكي...');
+            
+            // اختبار الاتصال بـ Supabase
+            const isConnected = await testSupabaseConnection();
+            
+            if (isConnected) {
+                console.log('✅ متصل بـ Supabase بنجاح');
+                await loadAllData();
+            } else {
+                console.log('⚠️ استخدام البيانات المحلية');
+                loadLocalData();
+            }
+            
+            // إضافة أحداث التبويب
+            setupTabs();
+            
+            // تحميل إعدادات الدفع من localStorage
+            loadPaymentSettings();
+        });
+        
+        // ===================== دوال Supabase =====================
+        async function testSupabaseConnection() {
+            try {
+                const { data, error } = await supabase.from('products').select('id').limit(1);
+                if (error) throw error;
+                return true;
+            } catch (error) {
+                console.error('❌ خطأ في الاتصال:', error);
+                return false;
+            }
+        }
+        
+        async function loadAllData() {
+            try {
+                // جلب الإعدادات
+                const { data: settingsData, error: settingsError } = await supabase
+                    .from('settings')
+                    .select('*')
+                    .eq('id', 1)
+                    .single();
+                
+                if (!settingsError && settingsData) {
+                    contactInfo.email = settingsData.admin_email || 'maski@example.com';
+                    contactInfo.phone = settingsData.admin_phone || '+966500000000';
+                    adminPassword = settingsData.admin_password || 'Maski2026';
+                    
+                    // تحديث واجهة المستخدم
+                    updateContactUI();
+                }
+                
+                // جلب الإعلان
+                const { data: adData, error: adError } = await supabase
+                    .from('ads')
+                    .select('ad_code')
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+                
+                if (!adError && adData.length > 0) {
+                    document.getElementById('adBanner').innerHTML = adData[0].ad_code;
+                    document.getElementById('adCode').value = adData[0].ad_code;
+                } else {
+                    document.getElementById('adBanner').innerHTML = 
+                        '<div style="padding:20px;text-align:center;">مرحباً في متجر ماسكي!</div>';
+                }
+                
+                // جلب جميع المنتجات
+                const { data: productsData, error: productsError } = await supabase
+                    .from('products')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (!productsError && productsData) {
+                    // تنظيم المنتجات حسب الأقسام
+                    products = {
+                        freefire: productsData.filter(p => p.category === 'freefire'),
+                        shipping: productsData.filter(p => p.category === 'shipping'),
+                        social: productsData.filter(p => p.category === 'social')
+                    };
+                    
+                    // عرض المنتجات
+                    displayAllProducts();
+                    updateProductsList();
+                }
+                
+            } catch (error) {
+                console.error('خطأ في تحميل البيانات:', error);
+            }
+        }
+        
+        // ===================== دوال البيانات المحلية =====================
+        function loadLocalData() {
+            products = {
+                freefire: [
+                    { id: 1, name: "حساب فري فاير مستوى 70", description: "حساب برتبة هيرو مع 20 سكن نادر", price: 50, product_link: "" },
+                    { id: 2, name: "حساب فري فاير ملكي", description: "حساب مع 5 شخصيات أسطورية", price: 120, product_link: "" }
+                ],
+                shipping: [
+                    { id: 3, name: "شحن سريع داخل المدينة", description: "توصيل خلال 24 ساعة", price: 10, product_link: "" }
+                ],
+                social: [
+                    { id: 4, name: "1000 متابع حقيقي", description: "متابعين حقيقيين لإنستغرام", price: 15, product_link: "" },
+                    { id: 5, name: "5000 متابع عربي", description: "متابعين عرب لتيك توك", price: 40, product_link: "" }
+                ]
+            };
+            
+            contactInfo.email = "maski@example.com";
+            contactInfo.phone = "+966500000000";
+            adminPassword = "Maski2026";
+            
+            updateContactUI();
+            displayAllProducts();
+            updateProductsList();
+        }
+        
+        function updateContactUI() {
             document.getElementById('footerEmail').textContent = contactInfo.email;
             document.getElementById('footerPhone').textContent = contactInfo.phone;
             document.getElementById('adminEmail').value = contactInfo.email;
             document.getElementById('adminPhone').value = contactInfo.phone;
+        }
+        
+        // ===================== عرض المنتجات =====================
+        function displayAllProducts() {
+            displayProducts('freefire');
+            displayProducts('shipping');
+            displayProducts('social');
+        }
+        
+        function displayProducts(category) {
+            const grid = document.getElementById(`${category}-products`);
+            if (!grid) return;
             
-            // تحميل المنتجات
-            loadProducts();
+            grid.innerHTML = '';
             
-            // إضافة أحداث التبويب
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-                    
-                    this.classList.add('active');
-                    const sectionId = this.getAttribute('data-section');
-                    document.getElementById(sectionId).classList.add('active');
-                });
+            products[category].forEach(product => {
+                const buyButton = product.price > 0 ? 
+                    `<button class="buy-btn" onclick="initiatePayment(${product.id})">شراء الآن - $${product.price}</button>` :
+                    `<button class="buy-btn" style="background: #666;" onclick="showProductDetails(${product.id})">عرض التفاصيل</button>`;
+                
+                const priceDisplay = product.price > 0 ? 
+                    `<div class="product-price">$${product.price}</div>` : '';
+                
+                grid.innerHTML += `
+                    <div class="product-card" data-id="${product.id}">
+                        <div class="product-image">
+                            <i class="fas fa-${product.price > 0 ? 'gem' : 'bullhorn'}"></i>
+                        </div>
+                        <div class="product-content">
+                            <h3 class="product-title">${product.name}</h3>
+                            <p class="product-description">${product.description}</p>
+                            ${priceDisplay}
+                            ${buyButton}
+                        </div>
+                    </div>
+                `;
             });
-        });
-
-        // عرض نافذة تسجيل الدخول
+        }
+        
+        // ===================== لوحة التحكم =====================
         function showLogin() {
             document.getElementById('loginModal').classList.add('active');
             document.getElementById('passwordInput').focus();
         }
-
-        // تسجيل دخول المسؤول
-        function loginAdmin() {
+        
+        async function loginAdmin() {
             const password = document.getElementById('passwordInput').value;
             
             if (password === adminPassword) {
                 document.getElementById('loginModal').classList.remove('active');
                 document.getElementById('adminPanel').classList.add('active');
                 document.getElementById('passwordInput').value = '';
-                alert('مرحبًا بك في لوحة التحكم!');
+                
+                // جلب بيانات الإعدادات من Supabase
+                const { data } = await supabase
+                    .from('settings')
+                    .select('*')
+                    .eq('id', 1)
+                    .single();
+                
+                if (data) {
+                    document.getElementById('adminEmail').value = data.admin_email || '';
+                    document.getElementById('adminPhone').value = data.admin_phone || '';
+                }
+                
+                alert('مرحباً بك في لوحة التحكم!');
             } else {
                 alert('كلمة المرور غير صحيحة!');
             }
         }
-
-        // تحديث الإعلان
-        function updateAd() {
+        
+        async function updateAd() {
             const adCode = document.getElementById('adCode').value;
-            if (adCode.trim()) {
+            
+            if (!adCode.trim()) {
+                alert('الرجاء إدخال كود الإعلان');
+                return;
+            }
+            
+            try {
+                // تعطيل الإعلانات القديمة
+                await supabase
+                    .from('ads')
+                    .update({ is_active: false })
+                    .eq('is_active', true);
+                
+                // إضافة الإعلان الجديد
+                const { error } = await supabase
+                    .from('ads')
+                    .insert([{
+                        ad_code: adCode,
+                        ad_type: 'banner',
+                        is_active: true
+                    }]);
+                
+                if (error) throw error;
+                
                 document.getElementById('adBanner').innerHTML = adCode;
                 alert('تم تحديث الإعلان بنجاح!');
+                
+            } catch (error) {
+                console.error('خطأ في تحديث الإعلان:', error);
+                alert('حدث خطأ في تحديث الإعلان');
             }
         }
-
-        // إضافة منتج جديد
-        function addProduct() {
+        
+        async function addProduct() {
             const category = document.getElementById('productCategory').value;
             const name = document.getElementById('productName').value;
             const description = document.getElementById('productDescription').value;
@@ -645,75 +905,43 @@
                 return;
             }
             
-            const newProduct = {
-                id: Date.now(),
-                name: name,
-                description: description,
-                price: price ? parseFloat(price) : 0,
-                link: link || ""
-            };
-            
-            products[category].push(newProduct);
-            loadProducts();
-            
-            // مسح الحقول
-            document.getElementById('productName').value = '';
-            document.getElementById('productDescription').value = '';
-            document.getElementById('productPrice').value = '';
-            document.getElementById('productLink').value = '';
-            
-            alert('تم إضافة المنتج بنجاح!');
+            try {
+                const { data, error } = await supabase
+                    .from('products')
+                    .insert([{
+                        category: category,
+                        name: name,
+                        description: description,
+                        price: price ? parseFloat(price) : 0,
+                        product_link: link || '',
+                        images: []
+                    }])
+                    .select();
+                
+                if (error) throw error;
+                
+                // تحديث القائمة المحلية
+                const newProduct = data[0];
+                products[category].unshift(newProduct);
+                
+                // تحديث العرض
+                displayProducts(category);
+                updateProductsList();
+                
+                // مسح الحقول
+                document.getElementById('productName').value = '';
+                document.getElementById('productDescription').value = '';
+                document.getElementById('productPrice').value = '';
+                document.getElementById('productLink').value = '';
+                
+                alert('تم إضافة المنتج بنجاح!');
+                
+            } catch (error) {
+                console.error('خطأ في إضافة المنتج:', error);
+                alert('حدث خطأ في إضافة المنتج');
+            }
         }
-
-        // تحميل المنتجات
-        function loadProducts() {
-            // تحميل منتجات فري فاير
-            const freefireGrid = document.getElementById('freefire-products');
-            freefireGrid.innerHTML = '';
-            products.freefire.forEach(product => {
-                freefireGrid.innerHTML += createProductCard(product);
-            });
-            
-            // تحميل منتجات الشحن
-            const shippingGrid = document.getElementById('shipping-products');
-            shippingGrid.innerHTML = '';
-            products.shipping.forEach(product => {
-                shippingGrid.innerHTML += createProductCard(product);
-            });
-            
-            // تحميل منتجات السوشيال ميديا
-            const socialGrid = document.getElementById('social-products');
-            socialGrid.innerHTML = '';
-            products.social.forEach(product => {
-                socialGrid.innerHTML += createProductCard(product);
-            });
-            
-            // تحديث قائمة المنتجات في لوحة التحكم
-            updateProductsList();
-        }
-
-        // إنشاء بطاقة منتج
-        function createProductCard(product) {
-            const buyButton = product.price > 0 ? 
-                `<button class="buy-btn" onclick="buyProduct('${product.id}')">شراء الآن - $${product.price}</button>` :
-                `<button class="buy-btn" style="background: #666;">عرض التفاصيل</button>`;
-            
-            return `
-                <div class="product-card" data-id="${product.id}">
-                    <div class="product-image">
-                        <i class="fas fa-${product.price > 0 ? 'gem' : 'bullhorn'}"></i>
-                    </div>
-                    <div class="product-content">
-                        <h3 class="product-title">${product.name}</h3>
-                        <p class="product-description">${product.description}</p>
-                        ${product.price > 0 ? `<div class="product-price">$${product.price}</div>` : ''}
-                        ${buyButton}
-                    </div>
-                </div>
-            `;
-        }
-
-        // تحديث قائمة المنتجات في لوحة التحكم
+        
         function updateProductsList() {
             const productsList = document.getElementById('productsList');
             let allProducts = [];
@@ -738,34 +966,15 @@
                         <strong>${product.name}</strong>
                         <span style="color: #666; font-size: 0.9rem;">(${categoryNames[product.category]})</span>
                         <div style="margin-top: 10px;">
-                            <button class="btn" style="padding: 5px 10px; font-size: 0.9rem; margin-right: 5px;" onclick="editProduct(${product.id})">تعديل</button>
-                            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.9rem;" onclick="deleteProduct(${product.id})">حذف</button>
+                            <button class="btn" style="padding: 5px 10px; font-size: 0.9rem; margin-right: 5px;" onclick="editProductPrompt(${product.id})">تعديل</button>
+                            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.9rem;" onclick="deleteProductPrompt(${product.id})">حذف</button>
                         </div>
                     </div>
                 `;
             });
         }
-
-        // شراء منتج
-        function buyProduct(productId) {
-            let product;
-            Object.keys(products).forEach(category => {
-                const found = products[category].find(p => p.id === productId);
-                if (found) product = found;
-            });
-            
-            if (product) {
-                // هنا سيتم دمج بوابة الدفع NowPayments
-                alert(`سيتم توجيهك لصفحة الدفع لشراء: ${product.name}\nالسعر: $${product.price}`);
-                
-                // محاكاة عملية الدفع
-                // في التطبيق الحقيقي، ستقوم بتوجيه المستخدم لبوابة الدفع
-                // window.location.href = `https://nowpayments.io/payment?amount=${product.price}&product=${product.name}`;
-            }
-        }
-
-        // تعديل منتج
-        function editProduct(productId) {
+        
+        async function editProductPrompt(productId) {
             let product, category;
             Object.keys(products).forEach(cat => {
                 const found = products[cat].find(p => p.id === productId);
@@ -775,49 +984,100 @@
                 }
             });
             
-            if (product) {
-                const newName = prompt('اسم المنتج الجديد:', product.name);
-                if (newName !== null) product.name = newName;
+            if (!product) return;
+            
+            const newName = prompt('اسم المنتج الجديد:', product.name);
+            if (newName === null) return;
+            
+            const newDesc = prompt('وصف المنتج الجديد:', product.description);
+            if (newDesc === null) return;
+            
+            const newPrice = prompt('السعر الجديد ($):', product.price);
+            if (newPrice === null) return;
+            
+            try {
+                const { error } = await supabase
+                    .from('products')
+                    .update({
+                        name: newName,
+                        description: newDesc,
+                        price: parseFloat(newPrice) || 0,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', productId);
                 
-                const newDesc = prompt('وصف المنتج الجديد:', product.description);
-                if (newDesc !== null) product.description = newDesc;
+                if (error) throw error;
                 
-                const newPrice = prompt('السعر الجديد ($):', product.price);
-                if (newPrice !== null) product.price = parseFloat(newPrice) || 0;
+                // تحديث البيانات المحلية
+                product.name = newName;
+                product.description = newDesc;
+                product.price = parseFloat(newPrice) || 0;
                 
-                loadProducts();
+                displayProducts(category);
+                updateProductsList();
                 alert('تم تعديل المنتج بنجاح!');
+                
+            } catch (error) {
+                console.error('خطأ في تعديل المنتج:', error);
+                alert('حدث خطأ في تعديل المنتج');
             }
         }
-
-        // حذف منتج
-        function deleteProduct(productId) {
-            if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
+        
+        async function deleteProductPrompt(productId) {
+            if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
+            
+            try {
+                const { error } = await supabase
+                    .from('products')
+                    .delete()
+                    .eq('id', productId);
+                
+                if (error) throw error;
+                
+                // تحديث البيانات المحلية
                 Object.keys(products).forEach(category => {
                     products[category] = products[category].filter(p => p.id !== productId);
                 });
                 
-                loadProducts();
+                displayAllProducts();
+                updateProductsList();
                 alert('تم حذف المنتج بنجاح!');
+                
+            } catch (error) {
+                console.error('خطأ في حذف المنتج:', error);
+                alert('حدث خطأ في حذف المنتج');
             }
         }
-
-        // تحديث معلومات التواصل
-        function updateContact() {
+        
+        async function updateContact() {
             const email = document.getElementById('adminEmail').value;
             const phone = document.getElementById('adminPhone').value;
             
-            contactInfo.email = email;
-            contactInfo.phone = phone;
-            
-            document.getElementById('footerEmail').textContent = email;
-            document.getElementById('footerPhone').textContent = phone;
-            
-            alert('تم تحديث معلومات التواصل بنجاح!');
+            try {
+                const { error } = await supabase
+                    .from('settings')
+                    .update({
+                        admin_email: email,
+                        admin_phone: phone,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', 1);
+                
+                if (error) throw error;
+                
+                contactInfo.email = email;
+                contactInfo.phone = phone;
+                
+                updateContactUI();
+                alert('تم تحديث معلومات التواصل بنجاح!');
+                
+            } catch (error) {
+                console.error('خطأ في تحديث التواصل:', error);
+                alert('حدث خطأ في تحديث معلومات التواصل');
+            }
         }
-
-        // تغيير كلمة المرور
-        function changePassword() {
+        
+        async function changePassword() {
             const newPassword = document.getElementById('newPassword').value;
             
             if (newPassword.length < 6) {
@@ -825,24 +1085,240 @@
                 return;
             }
             
-            adminPassword = newPassword;
-            document.getElementById('newPassword').value = '';
-            alert('تم تغيير كلمة المرور بنجاح!');
+            try {
+                const { error } = await supabase
+                    .from('settings')
+                    .update({
+                        admin_password: newPassword,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', 1);
+                
+                if (error) throw error;
+                
+                adminPassword = newPassword;
+                document.getElementById('newPassword').value = '';
+                alert('تم تغيير كلمة المرور بنجاح!');
+                
+            } catch (error) {
+                console.error('خطأ في تغيير كلمة المرور:', error);
+                alert('حدث خطأ في تغيير كلمة المرور');
+            }
         }
-
-        // تسجيل خروج المسؤول
+        
         function logoutAdmin() {
             document.getElementById('adminPanel').classList.remove('active');
             alert('تم تسجيل الخروج بنجاح!');
         }
-
-        // إغلاق نافذة تسجيل الدخول عند الضغط خارجها
+        
+        // ===================== NowPayments Integration =====================
+        function loadPaymentSettings() {
+            const savedKey = localStorage.getItem('maski_nowpayments_key');
+            if (savedKey) {
+                nowpaymentsApiKey = savedKey;
+                document.getElementById('nowpaymentsKey').value = savedKey;
+            }
+        }
+        
+        function savePaymentSettings() {
+            const apiKey = document.getElementById('nowpaymentsKey').value.trim();
+            
+            if (!apiKey) {
+                alert('الرجاء إدخال API Key');
+                return;
+            }
+            
+            nowpaymentsApiKey = apiKey;
+            localStorage.setItem('maski_nowpayments_key', apiKey);
+            alert('تم حفظ إعدادات الدفع بنجاح!');
+        }
+        
+        async function initiatePayment(productId) {
+            let product;
+            Object.keys(products).forEach(category => {
+                const found = products[category].find(p => p.id === productId);
+                if (found) product = found;
+            });
+            
+            if (!product) {
+                alert('المنتج غير موجود');
+                return;
+            }
+            
+            if (!nowpaymentsApiKey) {
+                alert('الرجاء إدخال NowPayments API Key في لوحة التحكم أولاً');
+                showLogin();
+                return;
+            }
+            
+            // عرض نافذة الدفع
+            document.getElementById('paymentTitle').textContent = `شراء: ${product.name}`;
+            document.getElementById('paymentContent').innerHTML = `
+                <div style="text-align: center;">
+                    <h3 style="color: var(--primary);">${product.name}</h3>
+                    <p>${product.description}</p>
+                    <div style="font-size: 2rem; font-weight: bold; color: var(--primary); margin: 20px 0;">
+                        $${product.price}
+                    </div>
+                    <div class="loader"></div>
+                    <p>جاري تحويلك لصفحة الدفع...</p>
+                </div>
+            `;
+            
+            document.getElementById('paymentModal').classList.add('active');
+            
+            try {
+                // إنشاء فاتورة NowPayments
+                const response = await createNowPaymentsInvoice(product);
+                
+                if (response && response.invoice_url) {
+                    // تسجيل الطلب في قاعدة البيانات
+                    await createOrderRecord(product);
+                    
+                    // توجيه المستخدم لصفحة الدفع
+                    setTimeout(() => {
+                        window.open(response.invoice_url, '_blank');
+                        closePaymentModal();
+                    }, 2000);
+                } else {
+                    throw new Error('فشل في إنشاء الفاتورة');
+                }
+                
+            } catch (error) {
+                console.error('خطأ في عملية الدفع:', error);
+                document.getElementById('paymentContent').innerHTML = `
+                    <div style="text-align: center; color: var(--accent);">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 20px;"></i>
+                        <h3>حدث خطأ في عملية الدفع</h3>
+                        <p>${error.message}</p>
+                        <button class="btn btn-primary" onclick="retryPayment(${productId})">إعادة المحاولة</button>
+                    </div>
+                `;
+            }
+        }
+        
+        async function createNowPaymentsInvoice(product) {
+            if (!nowpaymentsApiKey) {
+                throw new Error('API Key غير موجود');
+            }
+            
+            // Note: This is a simulation. In production, you need to make actual API call
+            // Uncomment and modify the following code when you have a valid API key
+            
+            /*
+            const response = await fetch('https://api.nowpayments.io/v1/invoice', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': nowpaymentsApiKey
+                },
+                body: JSON.stringify({
+                    price_amount: product.price,
+                    price_currency: 'usd',
+                    pay_currency: 'usdt',
+                    order_id: `maski_${Date.now()}_${product.id}`,
+                    order_description: product.name,
+                    ipn_callback_url: window.location.origin + '/ipn-callback',
+                    success_url: window.location.origin + '/success',
+                    cancel_url: window.location.origin + '/cancel'
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('فشل الاتصال بخادم الدفع');
+            }
+            
+            return await response.json();
+            */
+            
+            // Simulation for testing
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve({
+                        invoice_url: `https://nowpayments.io/payment?amount=${product.price}&description=${encodeURIComponent(product.name)}`,
+                        payment_id: `test_${Date.now()}`
+                    });
+                }, 1000);
+            });
+        }
+        
+        async function createOrderRecord(product) {
+            try {
+                const { error } = await supabase
+                    .from('orders')
+                    .insert([{
+                        product_id: product.id,
+                        customer_email: 'pending',
+                        customer_phone: 'pending',
+                        amount: product.price,
+                        status: 'pending',
+                        payment_id: `temp_${Date.now()}`,
+                        created_at: new Date().toISOString()
+                    }]);
+                
+                if (error) throw error;
+                
+            } catch (error) {
+                console.error('خطأ في تسجيل الطلب:', error);
+            }
+        }
+        
+        function retryPayment(productId) {
+            closePaymentModal();
+            setTimeout(() => initiatePayment(productId), 500);
+        }
+        
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.remove('active');
+        }
+        
+        function showProductDetails(productId) {
+            let product;
+            Object.keys(products).forEach(category => {
+                const found = products[category].find(p => p.id === productId);
+                if (found) product = found;
+            });
+            
+            if (product) {
+                alert(`تفاصيل المنتج:\n\n${product.name}\n\n${product.description}\n\n${product.product_link ? `الرابط: ${product.product_link}` : 'لا يوجد رابط'}`);
+            }
+        }
+        
+        // ===================== دوال مساعدة =====================
+        function setupTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                    
+                    this.classList.add('active');
+                    const sectionId = this.getAttribute('data-section');
+                    document.getElementById(sectionId).classList.add('active');
+                });
+            });
+        }
+        
+        // إغلاق نافذة تسجيل الدخول عند النقر خارجها
         document.getElementById('loginModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 this.classList.remove('active');
                 document.getElementById('passwordInput').value = '';
             }
         });
+        
+        // إغلاق نافذة الدفع عند النقر خارجها
+        document.getElementById('paymentModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePaymentModal();
+            }
+        });
+        
+        // السماح بالإدخال بالإنتر في نافذة تسجيل الدخول
+        document.getElementById('passwordInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                loginAdmin();
+            }
+        });
     </script>
 </body>
-      </html>
+    </html>
